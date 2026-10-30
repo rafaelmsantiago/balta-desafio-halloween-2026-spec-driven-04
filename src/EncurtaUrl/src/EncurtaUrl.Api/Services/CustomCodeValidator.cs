@@ -12,7 +12,7 @@ public class CustomCodeValidator : ICustomCodeValidator
 
     // Primeiros segmentos de rotas da própria API, que não podem virar código
     private static readonly HashSet<string> ReservedCodes =
-        new(["urls", "openapi"], StringComparer.OrdinalIgnoreCase);
+        new(["urls", "openapi", "scalar"], StringComparer.OrdinalIgnoreCase);
 
     public string[] Validate(string code)
     {

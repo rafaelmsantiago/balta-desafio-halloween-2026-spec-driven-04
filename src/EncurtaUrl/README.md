@@ -20,6 +20,7 @@ A API sobe em `http://localhost:5080` e o banco `encurtaurl.db` é criado na pri
 | GET | `/urls/{code}` | Detalhes de uma URL curta |
 | GET | `/{code}` | Redireciona (302) para a URL original e conta o clique |
 | GET | `/openapi/v1.json` | Documento OpenAPI (apenas em Development) |
+| GET | `/scalar` | Interface de testes Scalar (apenas em Development) |
 
 Use o arquivo `src/EncurtaUrl.Api/EncurtaUrl.Api.http` para testar.
 

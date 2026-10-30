@@ -2,6 +2,7 @@ using EncurtaUrl.Api.Data;
 using EncurtaUrl.Api.Endpoints;
 using EncurtaUrl.Api.Services;
 using Microsoft.EntityFrameworkCore;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,6 +27,7 @@ using (var scope = app.Services.CreateScope())
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.MapScalarApiReference();
 }
 
 app.UseExceptionHandler();
