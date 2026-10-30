@@ -85,6 +85,15 @@ Content-Type: application/json
   "code": "URLS"
 }
 
+### Código reservado scalar (400)
+POST {{baseUrl}}/urls
+Content-Type: application/json
+
+{
+  "url": "https://balta.io",
+  "code": "Scalar"
+}
+
 ### URL e código inválidos (400 com url e code)
 POST {{baseUrl}}/urls
 Content-Type: application/json
@@ -105,3 +114,6 @@ GET {{baseUrl}}/aZ3k9Qx
 
 ### Código inexistente (404)
 GET {{baseUrl}}/nao-existe
+
+### Interface Scalar (200, apenas em Development)
+GET {{baseUrl}}/scalar/
