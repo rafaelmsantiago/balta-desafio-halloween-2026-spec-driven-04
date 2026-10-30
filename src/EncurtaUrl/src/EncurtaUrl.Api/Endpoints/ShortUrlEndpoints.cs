@@ -3,6 +3,7 @@ using EncurtaUrl.Api.Data;
 using EncurtaUrl.Api.Models;
 using EncurtaUrl.Api.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 namespace EncurtaUrl.Api.Endpoints;
@@ -15,7 +16,9 @@ public static class ShortUrlEndpoints
     {
         var group = app.MapGroup("/urls").WithTags("URLs");
 
-        group.MapPost("/", CreateAsync).WithName("CreateShortUrl");
+        group.MapPost("/", CreateAsync)
+            .WithName("CreateShortUrl")
+            .ProducesProblem(StatusCodes.Status409Conflict);
         group.MapGet("/", ListAsync).WithName("ListShortUrls");
         group.MapGet("/{code}", GetByCodeAsync).WithName("GetShortUrl");
 
@@ -31,34 +34,55 @@ public static class ShortUrlEndpoints
         CreateShortUrlRequest request,
         AppDbContext db,
         IShortCodeGenerator generator,
+        ICustomCodeValidator validator,
         HttpRequest http,
         CancellationToken ct)
     {
+        // Código vazio é tratado como não informado
+        var customCode = string.IsNullOrEmpty(request.Code) ? null : request.Code;
+
+        var errors = new Dictionary<string, string[]>();
+
         if (!IsValidUrl(request.Url))
+            errors["url"] = ["Informe uma URL absoluta válida, começando com http:// ou https://."];
+
+        if (customCode is not null)
         {
-            return TypedResults.ValidationProblem(new Dictionary<string, string[]>
-            {
-                ["url"] = ["Informe uma URL absoluta válida, começando com http:// ou https://."]
-            });
+            var codeErrors = validator.Validate(customCode);
+            if (codeErrors.Length > 0)
+                errors["code"] = codeErrors;
         }
+
+        if (errors.Count > 0)
+            return TypedResults.ValidationProblem(errors);
 
         string? code = null;
 
-        for (var attempt = 0; attempt < MaxGenerationAttempts; attempt++)
+        if (customCode is not null)
         {
-            var candidate = generator.Generate();
-            if (!await db.ShortUrls.AnyAsync(x => x.Code == candidate, ct))
-            {
-                code = candidate;
-                break;
-            }
-        }
+            if (await db.ShortUrls.AnyAsync(x => x.Code == customCode, ct))
+                return CodeInUse(customCode);
 
-        if (code is null)
+            code = customCode;
+        }
+        else
         {
-            return TypedResults.Problem(
-                title: "Não foi possível gerar um código único.",
-                statusCode: StatusCodes.Status500InternalServerError);
+            for (var attempt = 0; attempt < MaxGenerationAttempts; attempt++)
+            {
+                var candidate = generator.Generate();
+                if (!await db.ShortUrls.AnyAsync(x => x.Code == candidate, ct))
+                {
+                    code = candidate;
+                    break;
+                }
+            }
+
+            if (code is null)
+            {
+                return TypedResults.Problem(
+                    title: "Não foi possível gerar um código único.",
+                    statusCode: StatusCodes.Status500InternalServerError);
+            }
         }
 
         var shortUrl = new ShortUrl
@@ -68,7 +92,23 @@ public static class ShortUrlEndpoints
         };
 
         db.ShortUrls.Add(shortUrl);
-        await db.SaveChangesAsync(ct);
+
+        if (customCode is not null)
+        {
+            // Corrida: outra requisição gravou o mesmo código depois da checagem acima
+            try
+            {
+                await db.SaveChangesAsync(ct);
+            }
+            catch (DbUpdateException ex) when (IsUniqueViolation(ex))
+            {
+                return CodeInUse(customCode);
+            }
+        }
+        else
+        {
+            await db.SaveChangesAsync(ct);
+        }
 
         var response = ToResponse(shortUrl, http);
         return TypedResults.Created($"/urls/{shortUrl.Code}", response);
@@ -117,6 +157,16 @@ public static class ShortUrlEndpoints
 
         return TypedResults.Redirect(shortUrl.OriginalUrl);
     }
+
+    private static ProblemHttpResult CodeInUse(string code)
+        => TypedResults.Problem(
+            title: "O código informado já está em uso.",
+            detail: $"O código '{code}' já está em uso. Escolha outro.",
+            statusCode: StatusCodes.Status409Conflict);
+
+    // SQLITE_CONSTRAINT (19) / SQLITE_CONSTRAINT_UNIQUE (2067)
+    private static bool IsUniqueViolation(DbUpdateException ex)
+        => ex.InnerException is SqliteException { SqliteErrorCode: 19, SqliteExtendedErrorCode: 2067 };
 
     private static bool IsValidUrl(string? url)
         => Uri.TryCreate(url, UriKind.Absolute, out var uri)

@@ -15,7 +15,7 @@ A API sobe em `http://localhost:5080` e o banco `encurtaurl.db` é criado na pri
 
 | Método | Rota | Descrição |
 | --- | --- | --- |
-| POST | `/urls` | Cria uma URL curta com código gerado automaticamente |
+| POST | `/urls` | Cria uma URL curta com código customizado opcional (`code`) ou gerado automaticamente |
 | GET | `/urls` | Lista todas as URLs curtas |
 | GET | `/urls/{code}` | Detalhes de uma URL curta |
 | GET | `/{code}` | Redireciona (302) para a URL original e conta o clique |
@@ -31,6 +31,7 @@ src/EncurtaUrl.Api
 ├── Data/AppDbContext.cs             # EF Core + índice único em Code
 ├── Endpoints/ShortUrlEndpoints.cs   # Minimal APIs
 ├── Models/ShortUrl.cs               # entidade
+├── Services/CustomCodeValidator.cs  # regras do código customizado
 ├── Services/ShortCodeGenerator.cs   # código aleatório base62 de 7 caracteres
 └── Program.cs
 ```

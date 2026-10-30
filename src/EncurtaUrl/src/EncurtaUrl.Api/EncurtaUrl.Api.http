@@ -16,6 +16,84 @@ Content-Type: application/json
   "url": "isso-nao-e-uma-url"
 }
 
+### Código vazio é tratado como não informado (201, código gerado)
+POST {{baseUrl}}/urls
+Content-Type: application/json
+
+{
+  "url": "https://balta.io/blog",
+  "code": ""
+}
+
+### Criar com código customizado (201, code = balta-io)
+POST {{baseUrl}}/urls
+Content-Type: application/json
+
+{
+  "url": "https://balta.io",
+  "code": "balta-io"
+}
+
+### Navegar pelo código customizado (302)
+GET {{baseUrl}}/balta-io
+
+### Detalhes do código customizado (200, clicks = 1)
+GET {{baseUrl}}/urls/balta-io
+
+### Código já em uso (409)
+POST {{baseUrl}}/urls
+Content-Type: application/json
+
+{
+  "url": "https://balta.io/cursos",
+  "code": "balta-io"
+}
+
+### Código com caractere inválido (400)
+POST {{baseUrl}}/urls
+Content-Type: application/json
+
+{
+  "url": "https://balta.io",
+  "code": "balta.io"
+}
+
+### Código curto demais (400)
+POST {{baseUrl}}/urls
+Content-Type: application/json
+
+{
+  "url": "https://balta.io",
+  "code": "ab"
+}
+
+### Código longo demais (400)
+POST {{baseUrl}}/urls
+Content-Type: application/json
+
+{
+  "url": "https://balta.io",
+  "code": "abcdefghijklmnopqrstuvwxyz0123456"
+}
+
+### Código reservado (400)
+POST {{baseUrl}}/urls
+Content-Type: application/json
+
+{
+  "url": "https://balta.io",
+  "code": "URLS"
+}
+
+### URL e código inválidos (400 com url e code)
+POST {{baseUrl}}/urls
+Content-Type: application/json
+
+{
+  "url": "isso-nao-e-uma-url",
+  "code": "a b"
+}
+
 ### Listar todas as URLs
 GET {{baseUrl}}/urls
 
